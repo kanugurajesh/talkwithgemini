@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { FaSun, FaMoon, FaGithub, FaLinkedin, FaGlobe } from 'react-icons/fa';
-import { useTheme } from './ThemeProvider';
+import { FaSun, FaMoon, FaGithub, FaLinkedin, FaGlobe } from "react-icons/fa";
+import { useTheme } from "./ThemeProvider";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -15,7 +15,7 @@ export default function Header() {
             className="p-2 rounded-lg transition-colors hover:bg-gray-200/10"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? (
+            {theme === "dark" ? (
               <FaSun className="w-5 h-5 text-yellow-400" />
             ) : (
               <FaMoon className="w-5 h-5 text-gray-600" />

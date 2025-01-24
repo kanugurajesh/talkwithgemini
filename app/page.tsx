@@ -1,5 +1,5 @@
-import AudioRecorder from './components/AudioRecorder';
-import { FaRobot, FaMagic, FaBrain } from 'react-icons/fa';
+import AudioRecorder from "./components/AudioRecorder";
+import { FaRobot, FaMagic, FaBrain } from "react-icons/fa";
 
 export default function Home() {
   return (
@@ -17,7 +17,7 @@ export default function Home() {
               Chat with Gemini
             </h1>
           </div>
-          
+
           <div className="flex flex-col items-center gap-4 mb-8">
             <div className="flex items-center justify-center gap-2 text-gray-400 dark:text-gray-300 text-lg">
               <FaMagic className="w-4 h-4 text-purple-400" />
@@ -31,7 +31,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-        
+
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-xl"></div>
           <div className="relative bg-white/5 dark:bg-gray-800/40 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl border border-gray-200/20 dark:border-gray-700/50">
