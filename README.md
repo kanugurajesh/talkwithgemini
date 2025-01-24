@@ -2,8 +2,6 @@
 
 A modern, voice-interactive AI chat application powered by Google's Gemini AI. Have natural conversations with an AI that can understand your voice and respond both textually and verbally.
 
-![Talk with Gemini](public/demo.png)
-
 ## ✨ Features
 
 - 🎙️ **Voice Interaction**: Speak naturally with the AI using your microphone
@@ -15,7 +13,7 @@ A modern, voice-interactive AI chat application powered by Google's Gemini AI. H
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14, React, TailwindCSS
+- **Frontend**: Next.js 15, Next.js, React, TailwindCSS
 - **AI**: Google Gemini AI
 - **Voice**: Web Speech API
 - **Styling**: Tailwind CSS with custom animations
