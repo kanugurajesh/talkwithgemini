@@ -3,7 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(request: NextRequest) {
   try {
-    const { audioData } = await request.json();
+    const body = await request.json();
+    const { audioData, text } = body;
     
     if (!process.env.GOOGLE_API_KEY) {
       return NextResponse.json(
@@ -13,26 +14,35 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // Convert base64 to proper format for the API
-    const result = await model.generateContent([
-      "Tell me about this audio clip.",
-      {
-        inlineData: {
-          data: audioData,
-          mimeType: "audio/mp3"
-        }
-      }
-    ]);
+    let prompt = '';
+    if (text) {
+      // If text is provided, use it directly
+      prompt = text;
+    } else if (audioData) {
+      // If audio data is provided, we need to handle speech-to-text
+      // For now, return an error message
+      return NextResponse.json(
+        { error: 'Speech-to-text functionality is not implemented yet.' },
+        { status: 501 }
+      );
+    } else {
+      return NextResponse.json(
+        { error: 'No input provided' },
+        { status: 400 }
+      );
+    }
 
+    // Generate response using Gemini
+    const result = await model.generateContent(prompt);
     const response = await result.response.text();
     return NextResponse.json({ response });
 
   } catch (error) {
-    console.error('Error processing audio:', error);
+    console.error('Error processing request:', error);
     return NextResponse.json(
-      { error: 'Failed to process audio' },
+      { error: 'Failed to process request' },
       { status: 500 }
     );
   }
