@@ -14,16 +14,39 @@
   }
 }
 
-@layer utilities {
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease-out;
+@layer base {
+  * {
+    @apply border-neutral-200 dark:border-neutral-700;
   }
-
-  .animate-slideUp {
-    animation: slideUp 0.5s ease-out;
+  body {
+    @apply bg-white dark:bg-neutral-900 text-black dark:text-white;
   }
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-600;
+}
+
+/* Smooth transitions */
+.transition-theme {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -44,24 +67,10 @@
   }
 }
 
-* {
-  @apply transition-colors duration-200;
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in-out;
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-slideUp {
+  animation: slideUp 0.5s ease-in-out;
 }

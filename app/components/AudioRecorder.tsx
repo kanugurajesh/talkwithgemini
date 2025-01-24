@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { FaMicrophone, FaStop, FaVolumeUp, FaVolumeMute, FaRegSmile } from 'react-icons/fa';
 import { ImSpinner8 } from 'react-icons/im';
+import ReactMarkdown, { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function AudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
@@ -19,7 +21,7 @@ export default function AudioRecorder() {
     "Hello! I&apos;m excited to chat with you. What would you like to talk about?",
     "Hey! I&apos;m here to help and chat. What shall we discuss today?",
     "Welcome! I&apos;m your friendly AI companion. How can I make your day better?",
-  ], []); // Empty dependency array since these messages never change
+  ], []);
 
   useEffect(() => {
     speechSynthesisRef.current = new SpeechSynthesisUtterance();
@@ -176,7 +178,32 @@ export default function AudioRecorder() {
                     {isSpeaking ? <FaVolumeUp className="w-4 h-4" /> : <FaVolumeMute className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-gray-700 dark:text-gray-200 leading-relaxed">{response}</p>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({node, ...props}) => <p className="text-gray-700 dark:text-gray-200 leading-relaxed mb-4 last:mb-0" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-4 last:mb-0" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-4 last:mb-0" {...props} />,
+                      li: ({node, ...props}) => <li className="mb-1 last:mb-0" {...props} />,
+                      strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                      em: ({node, ...props}) => <em className="italic" {...props} />,
+                      code: ({inline, className, children, ...props}) => {
+                        return inline ? (
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm" {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {response}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>
