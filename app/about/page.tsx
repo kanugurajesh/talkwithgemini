@@ -12,7 +12,7 @@ export default function About() {
             Making AI Conversation Natural
           </p>
           <p className="mt-4 max-w-2xl text-xl text-gray-500 dark:text-gray-300 lg:mx-auto">
-            We're building the future of human-AI interaction, making it more accessible, natural, and powerful.
+            We&apos;re building the future of human-AI interaction, making it more accessible, natural, and powerful.
           </p>
         </div>
 
@@ -22,7 +22,7 @@ export default function About() {
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Our Mission</h3>
               <p className="text-gray-600 dark:text-gray-300">
                 Our mission is to make AI conversation as natural as talking to a friend. We believe that AI should be
-                accessible to everyone, and that's why we've created an interface that combines the power of Google's
+                accessible to everyone, and that&apos;s why we&apos;ve created an interface that combines the power of Google&apos;s
                 Gemini AI with an intuitive, user-friendly design.
               </p>
             </div>

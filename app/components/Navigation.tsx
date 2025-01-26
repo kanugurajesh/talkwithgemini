@@ -10,7 +10,8 @@ export default function Navigation() {
   const pathname = usePathname();
 
   const navigation = [
-    { name: "Chat", href: "/" },
+    { name: "Home", href: "/" },
+    { name: "Chat", href: "/chat" },
     { name: "Features", href: "/features" },
     { name: "About", href: "/about" },
     { name: "Pricing", href: "/pricing" },

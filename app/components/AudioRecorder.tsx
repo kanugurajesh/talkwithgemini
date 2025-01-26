@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   FaMicrophone,
   FaStop,
@@ -52,6 +52,17 @@ export default function AudioRecorder() {
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const recognitionRef = useRef<any>(null);
   const { theme, toggleTheme } = useTheme();
+
+  const speakResponse = useCallback((text: string) => {
+    if (speechSynthesisRef.current && !isMuted) {
+      window.speechSynthesis.cancel();
+
+      speechSynthesisRef.current.text = text;
+      speechSynthesisRef.current.onstart = () => setIsSpeaking(true);
+      speechSynthesisRef.current.onend = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(speechSynthesisRef.current);
+    }
+  }, [isMuted]);
 
   const welcomeMessages = useMemo(
     () => [
@@ -106,7 +117,7 @@ export default function AudioRecorder() {
         window.speechSynthesis.cancel();
       }
     };
-  }, [conversationStarted, isSpeaking, welcomeMessages]);
+  }, [conversationStarted, isSpeaking, welcomeMessages, speakResponse]);
 
   useEffect(() => {
     // Initialize speech recognition
@@ -258,17 +269,6 @@ export default function AudioRecorder() {
     }
   };
 
-  const speakResponse = (text: string) => {
-    if (speechSynthesisRef.current && !isMuted) {
-      window.speechSynthesis.cancel();
-
-      speechSynthesisRef.current.text = text;
-      speechSynthesisRef.current.onstart = () => setIsSpeaking(true);
-      speechSynthesisRef.current.onend = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(speechSynthesisRef.current);
-    }
-  };
-
   const toggleMute = () => {
     setIsMuted(!isMuted);
     if (isSpeaking) {
@@ -310,7 +310,7 @@ export default function AudioRecorder() {
     return `Chat ${new Date().toLocaleDateString()}`;
   };
 
-  const saveSession = () => {
+  const saveSession = useCallback(() => {
     if (messages.length === 0) return;
 
     const session: ChatSession = {
@@ -328,7 +328,13 @@ export default function AudioRecorder() {
     localStorage.setItem('chat-sessions', JSON.stringify(updatedSessions));
     setSessions(updatedSessions);
     setCurrentSessionId(session.id);
-  };
+  }, [messages, currentSessionId, sessions]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveSession();
+    }
+  }, [messages, saveSession]);
 
   const loadSession = (sessionId: string) => {
     if (sessionId === "") {
@@ -412,12 +418,6 @@ export default function AudioRecorder() {
   useEffect(() => {
     loadSessions();
   }, []);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveSession();
-    }
-  }, [messages]);
 
   const sendTextMessage = async () => {
     if (!textInput.trim()) return;
