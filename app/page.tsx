@@ -14,7 +14,7 @@ export default function Home() {
               </div>
             </div>
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
-              Chat with Gemini
+              Talk With Gemini
             </h1>
           </div>
 
@@ -39,6 +39,20 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <footer className="mt-16 text-center py-8 border-t border-gray-200/20 dark:border-gray-700/50">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Created with ❤️ by{" "}
+          <a
+            href="https://kanugurajesh.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+          >
+            Kanugu Rajesh
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
