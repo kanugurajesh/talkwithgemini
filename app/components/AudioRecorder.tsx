@@ -155,7 +155,7 @@ export default function AudioRecorder() {
     };
   }, []);
 
-  const startRecording = async () => {
+  const handleStartRecording = async () => {
     try {
       if (isSpeaking) {
         window.speechSynthesis.cancel();
@@ -163,108 +163,125 @@ export default function AudioRecorder() {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorderRef.current = new MediaRecorder(stream);
       chunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
         }
       };
-
-      // Start both audio recording and speech recognition
-      mediaRecorder.start();
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-      }
-      setIsRecording(true);
-      setResponse("");
-    } catch (error) {
-      console.error("Error accessing microphone:", error);
-      // Try fallback to speech recognition only
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-        setIsRecording(true);
-      }
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        setIsListening(false);
-      }
-      setIsRecording(false);
 
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: "audio/mp3" });
-        await processAudio(audioBlob);
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/mp3' });
+        const base64Audio = await convertBlobToBase64(audioBlob);
+        
+        setIsProcessing(true);
+        try {
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              audio: base64Audio,
+            }),
+          });
 
-        mediaRecorderRef.current?.stream
-          .getTracks()
-          .forEach((track) => track.stop());
+          const data = await response.json();
+          
+          if (data.text) {
+            const newMessage: Message = {
+              id: Date.now().toString(),
+              content: data.text,
+              type: 'user',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, newMessage]);
+            handleSendMessage(data.text);
+          }
+        } catch (error) {
+          console.error('Error transcribing audio:', error);
+        } finally {
+          setIsProcessing(false);
+        }
       };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
     }
   };
 
-  const processAudio = async (audioBlob: Blob) => {
+  const convertBlobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          // Remove the data URL prefix
+          const base64String = reader.result.split(',')[1];
+          resolve(base64String);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleSendMessage = async (text: string) => {
     try {
       setIsProcessing(true);
-      const reader = new FileReader();
+      const response = await fetch("/api/audio", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: text,
+        }),
+      });
 
-      reader.onload = async () => {
-        const base64Audio = (reader.result as string).split(",")[1];
-
-        const response = await fetch("/api/audio", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            audioData: base64Audio,
-          }),
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            content: data.response,
-            type: "assistant",
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, newMessage]);
-          setResponse(data.response);
-          speakResponse(data.response);
-        } else {
-          const errorMessage: Message = {
-            id: Date.now().toString(),
-            content: "Error: " + data.error,
-            type: "assistant",
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, errorMessage]);
-          setResponse("Error: " + data.error);
-        }
-        setIsProcessing(false);
-      };
-
-      reader.readAsDataURL(audioBlob);
+      const data = await response.json();
+      if (response.ok) {
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          content: data.response,
+          type: "assistant",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, newMessage]);
+        setResponse(data.response);
+        speakResponse(data.response);
+      } else {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          content: "Error: " + data.error,
+          type: "assistant",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        setResponse("Error: " + data.error);
+      }
     } catch (error) {
-      console.error("Error processing audio:", error);
+      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: Date.now().toString(),
-        content: "Error processing audio",
+        content: "Error sending message",
         type: "assistant",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
-      setResponse("Error processing audio");
+      setResponse("Error sending message");
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -736,7 +753,7 @@ export default function AudioRecorder() {
           }`}
         ></div>
         <button
-          onClick={isRecording ? stopRecording : startRecording}
+          onClick={isRecording ? handleStopRecording : handleStartRecording}
           className={`
             relative w-20 h-20 rounded-full flex items-center justify-center
             transition-all duration-300 ease-in-out
