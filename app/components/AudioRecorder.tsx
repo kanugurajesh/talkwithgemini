@@ -11,6 +11,8 @@ import {
   FaDownload,
   FaMoon,
   FaSun,
+  FaHistory,
+  FaFileExport,
 } from "react-icons/fa";
 import { ImSpinner8 } from "react-icons/im";
 import ReactMarkdown from "react-markdown";
@@ -24,6 +26,14 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatSession {
+  id: string;
+  name: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export default function AudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -34,6 +44,9 @@ export default function AudioRecorder() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [textInput, setTextInput] = useState("");
   const [isMuted, setIsMuted] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -264,29 +277,147 @@ export default function AudioRecorder() {
     }
   };
 
+  const loadSessions = () => {
+    const savedSessions = localStorage.getItem('chat-sessions');
+    if (savedSessions) {
+      const parsedSessions = JSON.parse(savedSessions).map((session: ChatSession) => ({
+        ...session,
+        createdAt: new Date(session.createdAt),
+        updatedAt: new Date(session.updatedAt),
+        messages: session.messages.map(msg => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+      }));
+      setSessions(parsedSessions);
+    }
+  };
+
+  const generateSessionTitle = (messages: Message[]): string => {
+    if (messages.length === 0) return `New Chat ${new Date().toLocaleDateString()}`;
+    
+    // Try to find the first user message to use as title
+    const firstUserMessage = messages.find(m => m.type === 'user');
+    if (firstUserMessage) {
+      // Take first 30 characters of the message or up to the first newline
+      const title = firstUserMessage.content
+        .split('\n')[0]
+        .slice(0, 30)
+        .trim();
+      return title + (firstUserMessage.content.length > 30 ? '...' : '');
+    }
+    
+    return `Chat ${new Date().toLocaleDateString()}`;
+  };
+
+  const saveSession = () => {
+    if (messages.length === 0) return;
+
+    const session: ChatSession = {
+      id: currentSessionId || Date.now().toString(),
+      name: generateSessionTitle(messages),
+      messages,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const updatedSessions = currentSessionId
+      ? sessions.map(s => s.id === currentSessionId ? session : s)
+      : [...sessions, session];
+
+    localStorage.setItem('chat-sessions', JSON.stringify(updatedSessions));
+    setSessions(updatedSessions);
+    setCurrentSessionId(session.id);
+  };
+
+  const loadSession = (sessionId: string) => {
+    if (sessionId === "") {
+      // Handle new chat
+      setMessages([]);
+      setCurrentSessionId("");
+      setConversationStarted(false);
+      return;
+    }
+
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setMessages(session.messages);
+      setCurrentSessionId(session.id);
+      setConversationStarted(true);
+    }
+  };
+
   const clearHistory = () => {
     setMessages([]);
     setResponse("");
+    setConversationStarted(false);
+    if (currentSessionId) {
+      const updatedSessions = sessions.filter(s => s.id !== currentSessionId);
+      localStorage.setItem('chat-sessions', JSON.stringify(updatedSessions));
+      setSessions(updatedSessions);
+      setCurrentSessionId("");
+    }
   };
 
-  const downloadHistory = () => {
-    const historyText = messages
-      .map(
-        (msg) =>
-          `[${msg.timestamp.toLocaleString()}] ${msg.type}: ${msg.content}`
-      )
-      .join("\n\n");
+  const downloadHistory = (format: 'txt' | 'json') => {
+    const currentSession = {
+      id: currentSessionId || Date.now().toString(),
+      name: `Chat ${new Date().toLocaleDateString()}`,
+      messages,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-    const blob = new Blob([historyText], { type: "text/plain" });
+    let content: string;
+    let filename: string;
+    let type: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(currentSession, null, 2);
+      filename = `${currentSession.name}.json`;
+      type = 'application/json';
+    } else {
+      content = messages
+        .map(msg => `${msg.type.toUpperCase()} (${new Date(msg.timestamp).toLocaleString()}): ${msg.content}`)
+        .join('\n\n');
+      filename = `${currentSession.name}.txt`;
+      type = 'text/plain';
+    }
+
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "conversation-history.txt";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const deleteSession = (sessionId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering session selection
+    const updatedSessions = sessions.filter(s => s.id !== sessionId);
+    localStorage.setItem('chat-sessions', JSON.stringify(updatedSessions));
+    setSessions(updatedSessions);
+    
+    // If we're deleting the current session, clear it
+    if (sessionId === currentSessionId) {
+      setMessages([]);
+      setCurrentSessionId("");
+      setConversationStarted(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveSession();
+    }
+  }, [messages]);
 
   const sendTextMessage = async () => {
     if (!textInput.trim()) return;
@@ -356,7 +487,75 @@ export default function AudioRecorder() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-8">
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex-1 max-w-xs">
+          <div className="relative">
+            <button
+              className="w-full bg-white/10 dark:bg-gray-800/40 backdrop-blur-sm rounded-lg px-4 py-2.5 text-sm cursor-pointer border border-gray-200/20 dark:border-gray-700/50 hover:border-blue-500/50 focus:border-blue-500 transition-colors flex justify-between items-center"
+              onClick={() => setIsSessionMenuOpen(!isSessionMenuOpen)}
+            >
+              <span>
+                {currentSessionId 
+                  ? sessions.find(s => s.id === currentSessionId)?.name || "Select Chat"
+                  : "New Chat"}
+              </span>
+              <svg 
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isSessionMenuOpen ? 'transform rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {isSessionMenuOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200/20 dark:border-gray-700/50 py-1 max-h-60 overflow-y-auto">
+                <div
+                  className="px-4 py-2 hover:bg-blue-500/10 cursor-pointer flex items-center justify-between text-sm"
+                  onClick={() => {
+                    loadSession("");
+                    setIsSessionMenuOpen(false);
+                  }}
+                >
+                  <span className="font-medium">New Chat</span>
+                </div>
+                
+                {sessions.length > 0 && <div className="border-t border-gray-200/10 my-1"></div>}
+                
+                {sessions.map(session => (
+                  <div
+                    key={session.id}
+                    className="px-4 py-2 hover:bg-blue-500/10 cursor-pointer"
+                    onClick={() => {
+                      loadSession(session.id);
+                      setIsSessionMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{session.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(session.updatedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => deleteSession(session.id, e)}
+                        className="ml-2 p-1 hover:bg-red-500/20 rounded-full text-red-400 hover:text-red-500 transition-colors"
+                        title="Delete this chat"
+                      >
+                        <FaTrash className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="w-full max-w-3xl flex justify-end gap-2 mb-4">
         <button
           onClick={toggleMute}
@@ -389,13 +588,22 @@ export default function AudioRecorder() {
         >
           <FaTrash className="w-4 h-4" />
         </button>
-        <button
-          onClick={downloadHistory}
-          className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 transition-all"
-          title="Download conversation history"
-        >
-          <FaDownload className="w-4 h-4" />
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => downloadHistory('txt')}
+            className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 transition-all"
+            title="Download as Text"
+          >
+            <FaFileExport className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => downloadHistory('json')}
+            className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/30 text-blue-600 dark:text-blue-400 transition-all"
+            title="Download as JSON"
+          >
+            <FaDownload className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="w-full max-w-3xl flex flex-col gap-4">
